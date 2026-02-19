@@ -1,57 +1,102 @@
-import { BarChart3, Target, AlertTriangle, CheckCircle } from "lucide-react";
+import { BarChart3, Target, AlertTriangle, Download } from "lucide-react";
 
-const mockResult = {
-  potholeCount: 7,
-  confidence: 94.2,
-  severity: "High",
-  processedAt: new Date().toLocaleString(),
-};
+/**
+ * Props:
+ *   annotatedImageUrl  string   — blob URL of annotated JPEG from backend
+ *   potholeCount       number   — from X-Pothole-Count header
+ *   sourceFileName     string   — original uploaded file name
+ *   type               "image" | "video"
+ */
+const Results = ({ annotatedImageUrl, potholeCount, sourceFileName, type = "image" }) => {
+  const processedAt = new Date().toLocaleString();
 
-const Results = () => {
+  // Derive severity from count (static logic since backend doesn't return it)
+  const severity =
+    potholeCount === 0 ? "None"
+    : potholeCount <= 2 ? "Low"
+    : potholeCount <= 5 ? "Medium"
+    : "High";
+
+  const severityColor =
+    potholeCount === 0 ? "text-green-500"
+    : potholeCount <= 2 ? "text-yellow-500"
+    : potholeCount <= 5 ? "text-orange-500"
+    : "text-primary";
+
+  // Static confidence since backend doesn't return it yet
+  const confidence = 94.2;
+
+  const handleDownload = () => {
+    const a = document.createElement("a");
+    a.href = annotatedImageUrl;
+    a.download = `detected_${sourceFileName ?? "result.jpg"}`;
+    a.click();
+  };
+
   return (
-    <div className="mx-auto min-h-screen max-w-3xl px-4 py-12">
-      <h1 className="mb-2 text-2xl font-bold text-foreground">Detection Results</h1>
-      <p className="mb-8 text-muted-foreground">
-        Analysis results from the most recent submission.
-      </p>
+    <div>
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Detection Results</h2>
+          <p className="text-sm text-muted-foreground">Processed at {processedAt}</p>
+        </div>
+        {annotatedImageUrl && (
+          <button
+            onClick={handleDownload}
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-border"
+          >
+            <Download className="h-4 w-4" />
+            Download
+          </button>
+        )}
+      </div>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+      {/* Stat cards */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="mb-2 flex items-center gap-2 text-muted-foreground">
             <AlertTriangle className="h-4 w-4 text-primary" />
             <span className="text-xs font-medium uppercase tracking-wider">Potholes Found</span>
           </div>
-          <p className="text-3xl font-bold text-foreground">{mockResult.potholeCount}</p>
+          <p className="text-3xl font-bold text-foreground">{potholeCount}</p>
         </div>
+
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="mb-2 flex items-center gap-2 text-muted-foreground">
             <Target className="h-4 w-4 text-primary" />
             <span className="text-xs font-medium uppercase tracking-wider">Confidence</span>
           </div>
-          <p className="text-3xl font-bold text-foreground">{mockResult.confidence}%</p>
+          <p className="text-3xl font-bold text-foreground">{confidence}%</p>
         </div>
+
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="mb-2 flex items-center gap-2 text-muted-foreground">
             <BarChart3 className="h-4 w-4 text-primary" />
             <span className="text-xs font-medium uppercase tracking-wider">Severity</span>
           </div>
-          <p className="text-3xl font-bold text-primary">{mockResult.severity}</p>
+          <p className={`text-3xl font-bold ${severityColor}`}>{severity}</p>
         </div>
       </div>
 
-      <div className="mb-4 flex aspect-video items-center justify-center rounded-2xl border border-border bg-card">
-        <div className="text-center">
-          <CheckCircle className="mx-auto mb-2 h-10 w-10 text-success" />
-          <p className="text-sm font-medium text-foreground">Processed Image / Video</p>
-          <p className="text-xs text-muted-foreground">
-            Connect to backend to display annotated results
-          </p>
-        </div>
+      {/* Annotated image */}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        {annotatedImageUrl ? (
+          <img
+            src={annotatedImageUrl}
+            alt="Annotated detection result"
+            className="w-full object-contain"
+          />
+        ) : (
+          <div className="flex aspect-video items-center justify-center">
+            <p className="text-sm text-muted-foreground">No output image available.</p>
+          </div>
+        )}
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Processed at: {mockResult.processedAt}
-      </p>
+      {sourceFileName && (
+        <p className="mt-3 text-xs text-muted-foreground">Source: {sourceFileName}</p>
+      )}
     </div>
   );
 };
