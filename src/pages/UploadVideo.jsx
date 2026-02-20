@@ -1,45 +1,111 @@
-import { useState, useRef } from "react";
-import { Upload, Film, Send, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, Film, Send, X, RotateCcw } from "lucide-react";
+import Results from "./Results";
+
+const BASE_URL = "http://127.0.0.1:8000";
 
 const UploadVideo = () => {
+  const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [fileName, setFileName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null);
+  // result shape: { videoId, potholeCount, confidence, framesProcessed }
+  const [error, setError] = useState(null);
   const inputRef = useRef(null);
+  const resultsRef = useRef(null);
+
+  // Scroll to results when they appear
+  useEffect(() => {
+    if (result && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [result]);
 
   const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    const url = URL.createObjectURL(file);
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setFileName(f.name);
+    setResult(null);
+    setError(null);
+    const url = URL.createObjectURL(f);
+    setPreview(url);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files?.[0];
+    if (!f || !f.type.startsWith("video/")) return;
+    setFile(f);
+    setFileName(f.name);
+    setResult(null);
+    setError(null);
+    const url = URL.createObjectURL(f);
     setPreview(url);
   };
 
   const handleSubmit = async () => {
-    if (!preview) return;
+    if (!file) return;
     setSubmitting(true);
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // POST returns JSON: { video_id, stats: { pothole_count, average_confidence, frames_processed } }
+      const response = await fetch(`${BASE_URL}/video/detect`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Server error: ${response.status}`);
+      }
+
+      const { video_id, stats } = await response.json();
+
+      const potholeCount = stats.pothole_count ?? 0;
+      const confidence = stats.average_confidence
+        ? (stats.average_confidence * 100).toFixed(1)
+        : null;
+      const framesProcessed = stats.frames_processed ?? null;
+
+      setResult({ videoId: video_id, potholeCount, confidence, framesProcessed });
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
       setSubmitting(false);
-      alert("Video submitted! In production, this would call the backend API.");
-    }, 2000);
+    }
   };
 
   const clear = () => {
     if (preview) URL.revokeObjectURL(preview);
+    setFile(null);
     setPreview(null);
     setFileName("");
+    setResult(null);
+    setError(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
   return (
     <div className="mx-auto min-h-screen max-w-2xl px-4 py-12">
+      {/* Header */}
       <h1 className="mb-2 text-2xl font-bold text-foreground">Upload Video</h1>
       <p className="mb-8 text-muted-foreground">
         Select a road video for pothole detection analysis.
       </p>
 
+      {/* Upload area */}
       {!preview ? (
-        <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card p-12 transition-colors hover:border-primary/40">
+        <label
+          className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card p-12 transition-colors hover:border-primary/40"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+        >
           <Upload className="mb-3 h-10 w-10 text-muted-foreground" />
           <span className="mb-1 text-sm font-medium text-foreground">
             Click to upload or drag & drop
@@ -55,6 +121,7 @@ const UploadVideo = () => {
         </label>
       ) : (
         <div className="space-y-4">
+          {/* Original video preview */}
           <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
             <video src={preview} controls className="w-full" />
             <button
@@ -64,18 +131,53 @@ const UploadVideo = () => {
               <X className="h-4 w-4" />
             </button>
           </div>
+
+          {/* File name row */}
           <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
             <Film className="h-5 w-5 text-primary" />
             <span className="flex-1 truncate text-sm text-foreground">{fileName}</span>
           </div>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:opacity-50"
-          >
-            <Send className="h-4 w-4" />
-            {submitting ? "Processing..." : "Submit for Detection"}
-          </button>
+
+          {/* Error */}
+          {error && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {/* Submit / reset */}
+          {!result ? (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" />
+              {submitting ? "Processing video..." : "Submit for Detection"}
+            </button>
+          ) : (
+            <button
+              onClick={clear}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-6 py-3 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-border"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Upload Another Video
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Inline Results */}
+      {result && (
+        <div className="mt-10" ref={resultsRef}>
+          <Results
+            annotatedVideoUrl={`${BASE_URL}/video/${result.videoId}`}
+            potholeCount={result.potholeCount}
+            confidence={result.confidence}
+            framesProcessed={result.framesProcessed}
+            sourceFileName={fileName}
+            type="video"
+          />
         </div>
       )}
     </div>

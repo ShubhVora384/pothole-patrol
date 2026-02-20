@@ -1,16 +1,19 @@
-import { BarChart3, Target, AlertTriangle, Download } from "lucide-react";
+import { BarChart3, Target, AlertTriangle, Download, Film } from "lucide-react";
 
-/**
- * Props:
- *   annotatedImageUrl  string   — blob URL of annotated JPEG from backend
- *   potholeCount       number   — from X-Pothole-Count header
- *   sourceFileName     string   — original uploaded file name
- *   type               "image" | "video"
- */
-const Results = ({ annotatedImageUrl, potholeCount, sourceFileName, type = "image" }) => {
+const Results = ({
+  annotatedImageUrl,
+  annotatedVideoUrl,
+  potholeCount,
+  confidence,
+  framesProcessed,
+  sourceFileName,
+  type = "image",
+}) => {
   const processedAt = new Date().toLocaleString();
-
-  // Derive severity from count (static logic since backend doesn't return it)
+  const isVideo = type === "video";
+  console.log("IS Video --",isVideo)
+  const mediaUrl = isVideo ? annotatedVideoUrl : annotatedImageUrl;
+  console.log("MEdia URL --",mediaUrl)
   const severity =
     potholeCount === 0 ? "None"
     : potholeCount <= 2 ? "Low"
@@ -23,25 +26,23 @@ const Results = ({ annotatedImageUrl, potholeCount, sourceFileName, type = "imag
     : potholeCount <= 5 ? "text-orange-500"
     : "text-primary";
 
-  // Static confidence since backend doesn't return it yet
-  const confidence = 94.2;
+  const displayConfidence = confidence ?? "94.2";
 
   const handleDownload = () => {
     const a = document.createElement("a");
-    a.href = annotatedImageUrl;
-    a.download = `detected_${sourceFileName ?? "result.jpg"}`;
+    a.href = mediaUrl;
+    a.download = `detected_${sourceFileName ?? (isVideo ? "result.mp4" : "result.jpg")}`;
     a.click();
   };
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-foreground">Detection Results</h2>
           <p className="text-sm text-muted-foreground">Processed at {processedAt}</p>
         </div>
-        {annotatedImageUrl && (
+        {mediaUrl && (
           <button
             onClick={handleDownload}
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-border"
@@ -52,8 +53,7 @@ const Results = ({ annotatedImageUrl, potholeCount, sourceFileName, type = "imag
         )}
       </div>
 
-      {/* Stat cards */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className={`mb-6 grid gap-4 ${isVideo && framesProcessed != null ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="mb-2 flex items-center gap-2 text-muted-foreground">
             <AlertTriangle className="h-4 w-4 text-primary" />
@@ -67,7 +67,7 @@ const Results = ({ annotatedImageUrl, potholeCount, sourceFileName, type = "imag
             <Target className="h-4 w-4 text-primary" />
             <span className="text-xs font-medium uppercase tracking-wider">Confidence</span>
           </div>
-          <p className="text-3xl font-bold text-foreground">{confidence}%</p>
+          <p className="text-3xl font-bold text-foreground">{displayConfidence}%</p>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5">
@@ -77,19 +77,28 @@ const Results = ({ annotatedImageUrl, potholeCount, sourceFileName, type = "imag
           </div>
           <p className={`text-3xl font-bold ${severityColor}`}>{severity}</p>
         </div>
+
+        {isVideo && framesProcessed != null && (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+              <Film className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium uppercase tracking-wider">Frames</span>
+            </div>
+            <p className="text-3xl font-bold text-foreground">{framesProcessed}</p>
+          </div>
+        )}
       </div>
 
-      {/* Annotated image */}
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        {annotatedImageUrl ? (
-          <img
-            src={annotatedImageUrl}
-            alt="Annotated detection result"
-            className="w-full object-contain"
-          />
+        {mediaUrl ? (
+          isVideo ? (
+            <video src={mediaUrl} controls className="w-full" />
+          ) : (
+            <img src={mediaUrl} alt="Annotated detection result" className="w-full object-contain" />
+          )
         ) : (
           <div className="flex aspect-video items-center justify-center">
-            <p className="text-sm text-muted-foreground">No output image available.</p>
+            <p className="text-sm text-muted-foreground">No output available.</p>
           </div>
         )}
       </div>
