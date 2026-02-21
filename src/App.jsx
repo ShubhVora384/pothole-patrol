@@ -10,6 +10,7 @@ import UploadVideo from "./pages/UploadVideo";
 import Results from "./pages/Results";
 import HistoryPage from "./pages/HistoryPage";
 import NotFound from "./pages/NotFound";
+import Dashboard from "./pages/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/upload-image" element={<UploadImage />} />
           <Route path="/upload-video" element={<UploadVideo />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

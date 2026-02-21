@@ -1,4 +1,10 @@
-import { BarChart3, Target, AlertTriangle, Download, Film } from "lucide-react";
+import {
+  BarChart3,
+  Target,
+  AlertTriangle,
+  Download,
+  Film,
+} from "lucide-react";
 
 const Results = ({
   annotatedImageUrl,
@@ -7,31 +13,31 @@ const Results = ({
   confidence,
   framesProcessed,
   sourceFileName,
+  maxSeverity,
+  severityDistribution,
   type = "image",
 }) => {
+
   const processedAt = new Date().toLocaleString();
+
   const isVideo = type === "video";
-  console.log("IS Video --",isVideo)
   const mediaUrl = isVideo ? annotatedVideoUrl : annotatedImageUrl;
-  console.log("MEdia URL --",mediaUrl)
-  const severity =
-    potholeCount === 0 ? "None"
-    : potholeCount <= 2 ? "Low"
-    : potholeCount <= 5 ? "Medium"
-    : "High";
+
+  const severity = maxSeverity ?? "low";
 
   const severityColor =
-    potholeCount === 0 ? "text-green-500"
-    : potholeCount <= 2 ? "text-yellow-500"
-    : potholeCount <= 5 ? "text-orange-500"
-    : "text-primary";
+    severity === "low"
+      ? "text-green-500"
+      : severity === "medium"
+      ? "text-yellow-500"
+      : "text-red-500";
 
-  const displayConfidence = confidence ?? "94.2";
+  const displayConfidence = confidence ?? "0";
 
   const handleDownload = () => {
     const a = document.createElement("a");
     a.href = mediaUrl;
-    a.download = `detected_${sourceFileName ?? (isVideo ? "result.mp4" : "result.jpg")}`;
+    a.download = `detected_${sourceFileName ?? "result.mp4"}`;
     a.click();
   };
 
@@ -39,13 +45,18 @@ const Results = ({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Detection Results</h2>
-          <p className="text-sm text-muted-foreground">Processed at {processedAt}</p>
+          <h2 className="text-xl font-bold text-foreground">
+            Detection Results
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Processed at {processedAt}
+          </p>
         </div>
+
         {mediaUrl && (
           <button
             onClick={handleDownload}
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-border"
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-2 text-sm font-medium"
           >
             <Download className="h-4 w-4" />
             Download
@@ -53,61 +64,90 @@ const Results = ({
         )}
       </div>
 
-      <div className={`mb-6 grid gap-4 ${isVideo && framesProcessed != null ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-            <AlertTriangle className="h-4 w-4 text-primary" />
-            <span className="text-xs font-medium uppercase tracking-wider">Potholes Found</span>
-          </div>
-          <p className="text-3xl font-bold text-foreground">{potholeCount}</p>
-        </div>
+      <div className="mb-6 grid gap-4 sm:grid-cols-4">
+        <StatCard
+          icon={<AlertTriangle />}
+          label="Potholes"
+          value={potholeCount}
+        />
 
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-            <Target className="h-4 w-4 text-primary" />
-            <span className="text-xs font-medium uppercase tracking-wider">Confidence</span>
-          </div>
-          <p className="text-3xl font-bold text-foreground">{displayConfidence}%</p>
-        </div>
+        <StatCard
+          icon={<Target />}
+          label="Confidence"
+          value={`${displayConfidence}%`}
+        />
 
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-            <BarChart3 className="h-4 w-4 text-primary" />
-            <span className="text-xs font-medium uppercase tracking-wider">Severity</span>
-          </div>
-          <p className={`text-3xl font-bold ${severityColor}`}>{severity}</p>
-        </div>
+        <StatCard
+          icon={<BarChart3 />}
+          label="Severity"
+          value={severity.toUpperCase()}
+          color={severityColor}
+        />
 
         {isVideo && framesProcessed != null && (
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-              <Film className="h-4 w-4 text-primary" />
-              <span className="text-xs font-medium uppercase tracking-wider">Frames</span>
-            </div>
-            <p className="text-3xl font-bold text-foreground">{framesProcessed}</p>
-          </div>
+          <StatCard
+            icon={<Film />}
+            label="Frames"
+            value={framesProcessed}
+          />
         )}
       </div>
 
+      {/* NEW – Severity distribution */}
+      {severityDistribution && (
+        <div className="mb-6 rounded-2xl border border-border bg-card p-5">
+          <p className="mb-3 text-sm font-semibold">
+            Severity Distribution
+          </p>
+
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <SeverityBox label="Low" value={severityDistribution.low} color="text-green-500" />
+            <SeverityBox label="Medium" value={severityDistribution.medium} color="text-yellow-500" />
+            <SeverityBox label="High" value={severityDistribution.high} color="text-red-500" />
+          </div>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
         {mediaUrl ? (
-          isVideo ? (
-            <video src={mediaUrl} controls className="w-full" />
-          ) : (
-            <img src={mediaUrl} alt="Annotated detection result" className="w-full object-contain" />
-          )
+          <video src={mediaUrl} controls className="w-full" />
         ) : (
           <div className="flex aspect-video items-center justify-center">
-            <p className="text-sm text-muted-foreground">No output available.</p>
+            <p className="text-sm text-muted-foreground">
+              No output available.
+            </p>
           </div>
         )}
       </div>
 
       {sourceFileName && (
-        <p className="mt-3 text-xs text-muted-foreground">Source: {sourceFileName}</p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Source: {sourceFileName}
+        </p>
       )}
     </div>
   );
 };
+
+/* small UI helpers */
+
+const StatCard = ({ icon, label, value, color }) => (
+  <div className="rounded-2xl border border-border bg-card p-5 text-center">
+    <div className="mb-2 flex items-center justify-center gap-2 text-muted-foreground">
+      {icon}
+      <span className="text-xs uppercase">{label}</span>
+    </div>
+    <p className={`text-3xl font-bold ${color ?? "text-foreground"}`}>
+      {value}
+    </p>
+  </div>
+);
+
+const SeverityBox = ({ label, value, color }) => (
+  <div className="rounded-xl border border-border p-3">
+    <p className={`text-xl font-bold ${color}`}>{value}</p>
+    <p className="text-xs text-muted-foreground">{label}</p>
+  </div>
+);
 
 export default Results;
