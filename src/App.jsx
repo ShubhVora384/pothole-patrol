@@ -24,7 +24,6 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/upload-image" element={<UploadImage />} />
           <Route path="/upload-video" element={<UploadVideo />} />
-          <Route path="/results" element={<Results />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

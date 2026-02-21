@@ -6,7 +6,7 @@ const navItems = [
   { to: "/", label: "Home", icon: Home },
   { to: "/upload-image", label: "Upload Image", icon: Camera },
   { to: "/upload-video", label: "Upload Video", icon: Video },
-  { to: "/results", label: "Results", icon: BarChart3 },
+  // { to: "/results", label: "Results", icon: BarChart3 },
   { to: "/history", label: "History", icon: History },
 ];
 
